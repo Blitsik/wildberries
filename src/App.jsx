@@ -1,0 +1,869 @@
+import React, { useState, useMemo } from "react";
+
+/* ---- иконки SVG inline ---- */
+function Icon({ d, size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} />
+    </svg>
+  );
+}
+const PATHS = {
+  Wallet:        "M3 9h18M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2M3 9v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9M8 13h.01M12 13h.01M16 13h.01",
+  Send:          "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z",
+  PiggyBank:     "M19 9c0-3.31-3.13-6-7-6S5 5.69 5 9c0 1.82.8 3.46 2.1 4.65L6 20h12l-1.1-6.35C18.2 12.46 19 10.82 19 9zM12 3v2M9 20h6",
+  ShoppingBag:   "M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0",
+  User:          "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  ArrowUpRight:  "M7 17L17 7M7 7h10v10",
+  ArrowDownLeft: "M17 7L7 17M17 17H7V7",
+  Plus:          "M12 5v14M5 12h14",
+  X:             "M18 6L6 18M6 6l12 12",
+  Search:        "M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z",
+  ChevronRight:  "M9 18l6-6-6-6",
+  Minus:         "M5 12h14",
+  Check:         "M20 6L9 17l-5-5",
+  Menu:          "M3 12h18M3 6h18M3 18h18",
+  Target:        "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
+  Trophy:        "M8 21h8M12 17v4M17 3H7l-3 7c0 3.31 3.58 6 8 6s8-2.69 8-6l-3-7z",
+  CalendarDays:  "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
+  Box:           "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z",
+};
+function LI({ name, size = 18 }) {
+  return <Icon d={PATHS[name] || ""} size={size} />;
+}
+
+/* ---- данные ---- */
+const AVATAR_COLORS = ["#1E8849","#2B7DA8","#A85C2B","#7A4FB5","#B5304F","#3D8F8F"];
+
+const INITIAL_STUDENTS = [
+  { id:"s1", name:"Мария Куликова",  direction:"Промробоквантум", initials:"МК", earned:5200 },
+  { id:"s2", name:"Дима Ефремов",    direction:"IT-квантум",      initials:"ДЕ", earned:4870 },
+  { id:"s3", name:"Настя Орлова",    direction:"VR/AR квантум",   initials:"НО", earned:3990 },
+  { id:"s4", name:"Кирилл Мартынов", direction:"Промдизайн",      initials:"КМ", earned:3650 },
+  { id:"s5", name:"Соня Васильева",  direction:"Биоквантум",      initials:"СВ", earned:3200 },
+  { id:"s6", name:"Лев Петренко",    direction:"Геоквантум",      initials:"ЛП", earned:2800 },
+];
+
+const INITIAL_TRANSACTIONS = [
+  { id:1, kind:"shop",     direction:"out", amount:300,  title:"Покупка: Бутылка «Кванториум»",           date:"21.06.2026" },
+  { id:2, kind:"transfer", direction:"in",  amount:200,  title:"Перевод от Марии Куликовой",              date:"19.06.2026", comment:"За помощь с макетом" },
+  { id:3, kind:"reward",   direction:"in",  amount:500,  title:"Награда: победа в хакатоне",              date:"15.06.2026" },
+  { id:4, kind:"goal",     direction:"out", amount:1200, title:"Накопление: «Беспроводные наушники»",     date:"10.06.2026" },
+  { id:5, kind:"transfer", direction:"out", amount:150,  title:"Перевод Льву Петренко",                   date:"05.06.2026", comment:"Долг за стикеры" },
+  { id:6, kind:"reward",   direction:"in",  amount:2750, title:"Награда: завершение модуля «Промдизайн»", date:"28.05.2026" },
+];
+
+const INITIAL_GOALS = [
+  { id:"g1", title:"Беспроводные наушники",     target:2500, saved:1200, img:"/assets/headphones.webp" },
+  { id:"g2", title:"Мастер-класс по 3D-печати", target:1800, saved:1800, img:"/assets/masterclassof3dprinters.webp" },
+  { id:"g3", title:"Шоппер с лого Кванториума", target:600,  saved:150,  img:"/assets/shopper.jpg" },
+];
+
+const INITIAL_SHOP_ITEMS = [
+  { id:"i1", title:"Бутылка для воды «Кванториум»",     price:300,  category:"Сувениры",   img:"/assets/brendbottleofwater.jpg", owned:false },
+  { id:"i2", title:"Доп. час в лаборатории VR",         price:500,  category:"Привилегии", img:"/assets/vr.webp",                owned:false },
+  { id:"i3", title:"Набор стикеров «Кванториум»",       price:150,  category:"Сувениры",   img:"/assets/stikers.webp",           owned:true  },
+  { id:"i4", title:"Беспроводная мышь",                 price:1200, category:"Техника",    img:"/assets/mouse.webp",             owned:false },
+  { id:"i5", title:"Приоритетная запись на 3D-принтер", price:400,  category:"Привилегии", img:"/assets/3dprinter.webp",         owned:false },
+  { id:"i6", title:"Худи с лого Кванториума",           price:1600, category:"Сувениры",   img:"/assets/hudi.webp",              owned:false },
+];
+
+const ACHIEVEMENTS = [
+  { id:"a1", title:"Первый перевод",    desc:"Отправил перевод другому ученику",     icon:"Send",        earned:true },
+  { id:"a2", title:"Цель закрыта",      desc:"Накопил полную сумму на цель",         icon:"Target",      earned:true },
+  { id:"a3", title:"Топ-5 рейтинга",   desc:"Вошёл в пятёрку лидеров направления", icon:"Trophy",      earned:true },
+  { id:"a4", title:"30 дней в системе", desc:"Активен в КвантБанке месяц подряд",   icon:"CalendarDays",earned:true },
+];
+
+const CURRENT_USER = {
+  id:"me", name:"Артём Соколов", initials:"АС",
+  direction:"Промдизайн", group:"Группа 3", joined:"12.09.2025", color:"#1E8849",
+};
+
+const NAV_ITEMS = [
+  { id:"home",      label:"Главная",   icon:"Wallet"      },
+  { id:"transfers", label:"Переводы",  icon:"Send"        },
+  { id:"savings",   label:"Накопления",icon:"PiggyBank"   },
+  { id:"shop",      label:"Магазин",   icon:"ShoppingBag" },
+  { id:"profile",   label:"Профиль",   icon:"User"        },
+];
+
+/* ---- хелперы ---- */
+function fmt(n) { return Math.round(n).toLocaleString("ru-RU"); }
+
+function QuantIcon({ size = 14 }) {
+  return (
+    <img src="/assets/valuta.png" alt="кв" width={size} height={size}
+      style={{ verticalAlign:"-2px", marginLeft:4, objectFit:"contain" }} />
+  );
+}
+
+function Amount({ value, signed = false, size = "md" }) {
+  const positive = value >= 0;
+  const cls = signed ? (positive ? "amt amt-pos" : "amt amt-neg") : "amt";
+  return (
+    <span className={`${cls} amt-${size}`}>
+      {signed ? (positive ? "+" : "−") : ""}
+      {fmt(Math.abs(value))}
+      <QuantIcon size={size === "lg" ? 18 : size === "sm" ? 12 : 14} />
+    </span>
+  );
+}
+
+function Avatar({ initials, color, size = 40 }) {
+  return (
+    <div className="avatar" style={{ width:size, height:size, background:color, fontSize:size*0.36 }}>
+      {initials}
+    </div>
+  );
+}
+
+function txMeta(direction) {
+  return direction === "in"
+    ? { iconName:"ArrowDownLeft", cls:"tx-in" }
+    : { iconName:"ArrowUpRight",  cls:"tx-out" };
+}
+
+function ProgressBar({ value, max }) {
+  const pct = Math.min(100, Math.round((value / max) * 100));
+  return (
+    <div className="progress">
+      <div className="progress-fill" style={{ width:pct+"%" }} />
+    </div>
+  );
+}
+
+function ItemImg({ src, size = 40, radius = 10 }) {
+  return (
+    <img src={src} alt="" width={size} height={size}
+      style={{ objectFit:"cover", borderRadius:radius, flexShrink:0 }}
+      onError={e => { e.currentTarget.style.display="none"; }} />
+  );
+}
+
+function todayStr() { return new Date().toLocaleDateString("ru-RU"); }
+function todayLong() {
+  const s = new Date().toLocaleDateString("ru-RU",{ weekday:"long", day:"numeric", month:"long" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/* ---- App ---- */
+export default function App() {
+  const [activeTab, setActiveTab]         = useState("home");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [balance, setBalance]             = useState(1800);
+  const [students]                        = useState(INITIAL_STUDENTS);
+  const [transactions, setTransactions]   = useState(INITIAL_TRANSACTIONS);
+  const [goals, setGoals]                 = useState(INITIAL_GOALS);
+  const [shopItems, setShopItems]         = useState(INITIAL_SHOP_ITEMS);
+  const [toast, setToast]                 = useState(null);
+
+  const totals = useMemo(() => {
+    let earned = 0, spent = 0;
+    transactions.forEach(t => t.direction === "in" ? (earned += t.amount) : (spent += t.amount));
+    return { earned, spent };
+  }, [transactions]);
+
+  const leaderboard = useMemo(() => {
+    const all = [
+      ...students.map(s => ({ id:s.id, name:s.name, direction:s.direction, initials:s.initials, score:s.earned, isMe:false })),
+      { id:"me", name:CURRENT_USER.name, direction:CURRENT_USER.direction, initials:CURRENT_USER.initials, score:totals.earned, isMe:true },
+    ];
+    return all.sort((a,b) => b.score - a.score);
+  }, [students, totals.earned]);
+
+  const myRank = leaderboard.findIndex(p => p.isMe) + 1;
+
+  function notify(msg, kind = "success") {
+    setToast({ msg, kind });
+    window.clearTimeout(window.__qbToast);
+    window.__qbToast = window.setTimeout(() => setToast(null), 2600);
+  }
+  function pushTx(tx) {
+    setTransactions(prev => [{ id:Date.now(), date:todayStr(), ...tx }, ...prev]);
+  }
+  function handleTransfer(recipient, amount, comment) {
+    if (amount <= 0)      return notify("Введите сумму больше нуля", "error");
+    if (amount > balance) return notify("Недостаточно квантов на балансе", "error");
+    setBalance(b => b - amount);
+    pushTx({ kind:"transfer", direction:"out", amount, title:`Перевод: ${recipient.name}`, comment });
+    notify(`Отправлено ${fmt(amount)} квантов · ${recipient.name}`);
+  }
+  function depositToGoal(goalId, amount) {
+    if (amount <= 0)      return notify("Введите сумму больше нуля", "error");
+    if (amount > balance) return notify("Недостаточно квантов на балансе", "error");
+    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, saved:Math.min(g.target, g.saved+amount) } : g));
+    setBalance(b => b - amount);
+    const goal = goals.find(g => g.id === goalId);
+    pushTx({ kind:"goal", direction:"out", amount, title:`Накопление: «${goal.title}»` });
+    notify(`Отложено ${fmt(amount)} квантов в копилку`);
+  }
+  function withdrawFromGoal(goalId, amount) {
+    const goal = goals.find(g => g.id === goalId);
+    if (amount <= 0)         return notify("Введите сумму больше нуля", "error");
+    if (amount > goal.saved) return notify("В копилке нет такой суммы", "error");
+    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, saved:g.saved-amount } : g));
+    setBalance(b => b + amount);
+    pushTx({ kind:"goal", direction:"in", amount, title:`Снятие из копилки: «${goal.title}»` });
+    notify(`Снято ${fmt(amount)} квантов из копилки`);
+  }
+  function createGoal(title, target) {
+    if (!title.trim())          return notify("Укажите название цели", "error");
+    if (!target || target <= 0) return notify("Укажите сумму цели", "error");
+    setGoals(prev => [...prev, { id:"g"+Date.now(), title:title.trim(), target, saved:0, img:"" }]);
+    notify("Новая цель создана");
+  }
+  function buyItem(itemId) {
+    const item = shopItems.find(i => i.id === itemId);
+    if (item.owned) return;
+    if (item.price > balance) return notify("Недостаточно квантов на балансе", "error");
+    setBalance(b => b - item.price);
+    setShopItems(prev => prev.map(i => i.id === itemId ? { ...i, owned:true } : i));
+    pushTx({ kind:"shop", direction:"out", amount:item.price, title:`Покупка: ${item.title}` });
+    notify(`Куплено: ${item.title}`);
+  }
+  function go(tab) { setActiveTab(tab); setMobileNavOpen(false); }
+
+  return (
+    <div className="qbank">
+      <style>{CSS}</style>
+
+      <aside className="sidebar">
+        <div className="brand">
+          <img src="/assets/kvantbanklogo.png" alt="КвантБанк" className="brand-logo" />
+          <div>
+            <div className="brand-name">КвантБанк</div>
+            <div className="brand-sub">Кванториум · ХМАО</div>
+          </div>
+        </div>
+        <nav className="nav">
+          {NAV_ITEMS.map(item => (
+            <button key={item.id} className={`nav-item ${activeTab===item.id?"active":""}`}
+              onClick={() => go(item.id)} type="button">
+              <LI name={item.icon} size={18} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-card">
+          <div className="sidebar-card-label">Баланс</div>
+          <Amount value={balance} size="lg" />
+        </div>
+      </aside>
+
+      <div className="mobile-topbar">
+        <div className="brand">
+          <img src="/assets/kvantbanklogo.png" alt="КвантБанк" className="brand-logo" style={{width:28,height:28}} />
+          <div className="brand-name">КвантБанк</div>
+        </div>
+        <button className="icon-btn" onClick={() => setMobileNavOpen(v => !v)} type="button" aria-label="Меню">
+          <LI name={mobileNavOpen?"X":"Menu"} size={20} />
+        </button>
+      </div>
+      {mobileNavOpen && (
+        <div className="mobile-menu">
+          {NAV_ITEMS.map(item => (
+            <button key={item.id} className={`nav-item ${activeTab===item.id?"active":""}`}
+              onClick={() => go(item.id)} type="button">
+              <LI name={item.icon} size={18} /><span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <main className="main">
+        {activeTab==="home"      && <HomeView user={CURRENT_USER} balance={balance} transactions={transactions} goals={goals} shopItems={shopItems} leaderboard={leaderboard} myRank={myRank} onNav={go} />}
+        {activeTab==="transfers" && <TransfersView students={students} balance={balance} transactions={transactions} onTransfer={handleTransfer} />}
+        {activeTab==="savings"   && <SavingsView goals={goals} balance={balance} onDeposit={depositToGoal} onWithdraw={withdrawFromGoal} onCreate={createGoal} />}
+        {activeTab==="shop"      && <ShopView items={shopItems} balance={balance} onBuy={buyItem} />}
+        {activeTab==="profile"   && <ProfileView user={CURRENT_USER} balance={balance} earned={totals.earned} spent={totals.spent} leaderboard={leaderboard} myRank={myRank} />}
+      </main>
+
+      <nav className="bottom-nav">
+        {NAV_ITEMS.map(item => (
+          <button key={item.id} className={`bottom-nav-item ${activeTab===item.id?"active":""}`}
+            onClick={() => go(item.id)} type="button">
+            <LI name={item.icon} size={20} />
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {toast && (
+        <div className={`toast ${toast.kind==="error"?"toast-error":""}`}>
+          <LI name={toast.kind==="error"?"X":"Check"} size={16} />
+          <span>{toast.msg}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---- HomeView ---- */
+function HomeView({ user, balance, transactions, goals, shopItems, leaderboard, myRank, onNav }) {
+  const topGoal  = goals.find(g => g.saved < g.target) || goals[0];
+  const recent   = transactions.slice(0, 4);
+  const top3     = leaderboard.slice(0, 3);
+  const newItems = shopItems.filter(i => !i.owned).slice(0, 2);
+
+  return (
+    <div className="view">
+      <header className="page-head">
+        <div>
+          <div className="greeting">Привет, {user.name.split(" ")[0]}!</div>
+          <div className="page-sub">{todayLong()}</div>
+        </div>
+        <Avatar initials={user.initials} color={user.color} size={44} />
+      </header>
+
+      <section className="balance-card">
+        <div className="balance-card-label"><span className="live-dot" /> Текущий баланс</div>
+        <Amount value={balance} size="lg" />
+        <div className="balance-actions">
+          <button className="btn btn-light" onClick={() => onNav("transfers")} type="button"><LI name="Send" size={15} /> Перевести</button>
+          <button className="btn btn-light" onClick={() => onNav("savings")}   type="button"><LI name="PiggyBank" size={15} /> Копилка</button>
+          <button className="btn btn-light" onClick={() => onNav("shop")}      type="button"><LI name="ShoppingBag" size={15} /> Магазин</button>
+        </div>
+      </section>
+
+      <section className="grid-2">
+        <div className="card">
+          <div className="card-head">
+            <div className="card-title">Последние операции</div>
+            <button className="link-btn" onClick={() => onNav("transfers")} type="button">Все <LI name="ChevronRight" size={14} /></button>
+          </div>
+          <ul className="tx-list">
+            {recent.map(t => {
+              const { iconName, cls } = txMeta(t.direction);
+              return (
+                <li key={t.id} className="tx-row">
+                  <span className={`tx-icon ${cls}`}><LI name={iconName} size={15} /></span>
+                  <div className="tx-info">
+                    <div className="tx-title">{t.title}</div>
+                    <div className="tx-date">{t.date}</div>
+                  </div>
+                  <Amount value={t.amount} signed size="sm" />
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <div className="card-title">Активная цель</div>
+            <button className="link-btn" onClick={() => onNav("savings")} type="button">Все цели <LI name="ChevronRight" size={14} /></button>
+          </div>
+          {topGoal && (
+            <div className="goal-mini">
+              <div className="goal-mini-icon">
+                {topGoal.img ? <ItemImg src={topGoal.img} size={38} radius={10} /> : <LI name="PiggyBank" size={20} />}
+              </div>
+              <div className="goal-mini-body">
+                <div className="goal-mini-title">{topGoal.title}</div>
+                <ProgressBar value={topGoal.saved} max={topGoal.target} />
+                <div className="goal-mini-nums">
+                  <Amount value={topGoal.saved} size="sm" /> <span className="muted">из</span> <Amount value={topGoal.target} size="sm" />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="grid-2">
+        <div className="card">
+          <div className="card-head">
+            <div className="card-title">Рейтинг направления</div>
+            <button className="link-btn" onClick={() => onNav("profile")} type="button">Полный список <LI name="ChevronRight" size={14} /></button>
+          </div>
+          <ul className="rank-list">
+            {top3.map((p, idx) => (
+              <li key={p.id} className={`rank-row ${p.isMe ? "me" : ""}`}>
+                <span className="rank-num">{idx + 1}</span>
+                <Avatar initials={p.initials} color={AVATAR_COLORS[idx % AVATAR_COLORS.length]} size={30} />
+                <span className="rank-name">{p.isMe ? "Вы" : p.name}</span>
+                <Amount value={p.score} size="sm" />
+              </li>
+            ))}
+          </ul>
+          <div className="rank-foot">Ваше место в общем рейтинге: <b>#{myRank}</b></div>
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <div className="card-title">Новое в магазине</div>
+            <button className="link-btn" onClick={() => onNav("shop")} type="button">Открыть <LI name="ChevronRight" size={14} /></button>
+          </div>
+          <ul className="shop-mini-list">
+            {newItems.map(i => (
+              <li key={i.id} className="shop-mini-row">
+                <div className="shop-mini-icon"><ItemImg src={i.img} size={30} radius={8} /></div>
+                <span className="shop-mini-title">{i.title}</span>
+                <Amount value={i.price} size="sm" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/* ---- TransfersView ---- */
+function TransfersView({ students, balance, transactions, onTransfer }) {
+  const [query, setQuery]         = useState("");
+  const [recipient, setRecipient] = useState(null);
+  const [amount, setAmount]       = useState("");
+  const [comment, setComment]     = useState("");
+
+  const filtered = students.filter(s => s.name.toLowerCase().includes(query.toLowerCase()));
+  const history  = transactions.filter(t => t.kind === "transfer");
+
+  function submit() {
+    const amt = parseInt(amount, 10) || 0;
+    if (!recipient) return;
+    onTransfer(recipient, amt, comment);
+    setAmount(""); setComment(""); setRecipient(null); setQuery("");
+  }
+
+  return (
+    <div className="view">
+      <header className="page-head">
+        <div>
+          <div className="greeting">Переводы</div>
+          <div className="page-sub">Отправляйте кванты другим ученикам Кванториума</div>
+        </div>
+      </header>
+
+      <section className="card">
+        <div className="card-title" style={{marginBottom:14}}>Новый перевод</div>
+        {!recipient ? (
+          <div className="search-box">
+            <LI name="Search" size={16} />
+            <input className="search-input" placeholder="Найти ученика по имени"
+              value={query} onChange={e => setQuery(e.target.value)} />
+          </div>
+        ) : (
+          <div className="recipient-pill">
+            <Avatar initials={recipient.initials} color="#1E8849" size={32} />
+            <div>
+              <div className="recipient-name">{recipient.name}</div>
+              <div className="recipient-dir">{recipient.direction}</div>
+            </div>
+            <button className="icon-btn" type="button" onClick={() => setRecipient(null)}><LI name="X" size={16} /></button>
+          </div>
+        )}
+        {!recipient && query && (
+          <ul className="student-list">
+            {filtered.length === 0 && <li className="empty-row">Никого не нашли</li>}
+            {filtered.map(s => (
+              <li key={s.id} className="student-row" onClick={() => { setRecipient(s); setQuery(""); }}>
+                <Avatar initials={s.initials} color="#2B7DA8" size={32} />
+                <div>
+                  <div className="recipient-name">{s.name}</div>
+                  <div className="recipient-dir">{s.direction}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="field-row">
+          <label className="field">
+            <span className="field-label">Сумма</span>
+            <input className="text-input" type="number" min="0" placeholder="0"
+              value={amount} onChange={e => setAmount(e.target.value)} />
+          </label>
+          <label className="field" style={{flex:2}}>
+            <span className="field-label">Комментарий (необязательно)</span>
+            <input className="text-input" placeholder="За что перевод?"
+              value={comment} onChange={e => setComment(e.target.value)} />
+          </label>
+        </div>
+        <div className="balance-hint">Доступно: <Amount value={balance} size="sm" /></div>
+        <button className="btn btn-primary" type="button" disabled={!recipient || !amount} onClick={submit}>
+          <LI name="Send" size={15} /> Перевести
+        </button>
+      </section>
+
+      <section className="card">
+        <div className="card-title" style={{marginBottom:10}}>История переводов</div>
+        {history.length === 0 && <div className="empty-row">Переводов пока не было</div>}
+        <ul className="tx-list">
+          {history.map(t => {
+            const { iconName, cls } = txMeta(t.direction);
+            return (
+              <li key={t.id} className="tx-row">
+                <span className={`tx-icon ${cls}`}><LI name={iconName} size={15} /></span>
+                <div className="tx-info">
+                  <div className="tx-title">{t.title}</div>
+                  <div className="tx-date">{t.comment ? t.comment + " · " : ""}{t.date}</div>
+                </div>
+                <Amount value={t.amount} signed size="sm" />
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+/* ---- SavingsView ---- */
+function SavingsView({ goals, balance, onDeposit, onWithdraw, onCreate }) {
+  const [amounts, setAmounts]   = useState({});
+  const [creating, setCreating] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newTarget, setNewTarget] = useState("");
+
+  function setAmt(id, v) { setAmounts(prev => ({ ...prev, [id]:v })); }
+
+  function submitCreate() {
+    onCreate(newTitle, parseInt(newTarget, 10) || 0);
+    setNewTitle(""); setNewTarget(""); setCreating(false);
+  }
+
+  return (
+    <div className="view">
+      <header className="page-head">
+        <div>
+          <div className="greeting">Накопления</div>
+          <div className="page-sub">Откладывайте кванты на цели и забирайте обратно в любой момент</div>
+        </div>
+        <button className="btn btn-primary" type="button" onClick={() => setCreating(v => !v)}>
+          <LI name={creating ? "X" : "Plus"} size={15} /> {creating ? "Отмена" : "Новая цель"}
+        </button>
+      </header>
+
+      {creating && (
+        <section className="card">
+          <div className="card-title" style={{marginBottom:14}}>Новая цель накопления</div>
+          <div className="field-row">
+            <label className="field" style={{flex:2}}>
+              <span className="field-label">Название</span>
+              <input className="text-input" placeholder="Например, набор маркеров"
+                value={newTitle} onChange={e => setNewTitle(e.target.value)} />
+            </label>
+            <label className="field">
+              <span className="field-label">Сумма цели</span>
+              <input className="text-input" type="number" min="0" placeholder="0"
+                value={newTarget} onChange={e => setNewTarget(e.target.value)} />
+            </label>
+          </div>
+          <button className="btn btn-primary" type="button" onClick={submitCreate}>
+            <LI name="Check" size={15} /> Создать цель
+          </button>
+        </section>
+      )}
+
+      <div className="balance-hint" style={{marginBottom:4}}>Доступно на балансе: <Amount value={balance} size="sm" /></div>
+
+      <div className="goal-grid">
+        {goals.map(g => {
+          const done = g.saved >= g.target;
+          const amt  = parseInt(amounts[g.id], 10) || 0;
+          return (
+            <div key={g.id} className="card goal-card">
+              <div className="goal-card-head">
+                <div className="goal-card-icon">
+                  {g.img ? <ItemImg src={g.img} size={38} radius={10} /> : <LI name="Box" size={20} />}
+                </div>
+                <div>
+                  <div className="goal-card-title">{g.title}</div>
+                  {done && <div className="goal-done-tag"><LI name="Check" size={12} /> Цель достигнута</div>}
+                </div>
+              </div>
+              <ProgressBar value={g.saved} max={g.target} />
+              <div className="goal-mini-nums" style={{marginTop:8}}>
+                <Amount value={g.saved} size="sm" /> <span className="muted">из</span> <Amount value={g.target} size="sm" />
+              </div>
+              <div className="goal-actions">
+                <input className="text-input" type="number" min="0" placeholder="Сумма"
+                  value={amounts[g.id] || ""} onChange={e => setAmt(g.id, e.target.value)} />
+                <button className="btn btn-light" type="button" disabled={!amt}
+                  onClick={() => { onDeposit(g.id, amt); setAmt(g.id, ""); }}>
+                  <LI name="Plus" size={14} /> Положить
+                </button>
+                <button className="btn btn-light" type="button" disabled={!amt || g.saved === 0}
+                  onClick={() => { onWithdraw(g.id, amt); setAmt(g.id, ""); }}>
+                  <LI name="Minus" size={14} /> Забрать
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ---- ShopView ---- */
+function ShopView({ items, balance, onBuy }) {
+  const categories = ["Все","Сувениры","Привилегии","Техника"];
+  const [filter, setFilter] = useState("Все");
+  const visible = filter === "Все" ? items : items.filter(i => i.category === filter);
+
+  return (
+    <div className="view">
+      <header className="page-head">
+        <div>
+          <div className="greeting">Магазин наград</div>
+          <div className="page-sub">Меняйте кванты на сувениры, технику и привилегии</div>
+        </div>
+        <div className="balance-hint"><Amount value={balance} size="sm" /></div>
+      </header>
+
+      <div className="chip-row">
+        {categories.map(c => (
+          <button key={c} type="button" className={`chip ${filter===c?"active":""}`} onClick={() => setFilter(c)}>{c}</button>
+        ))}
+      </div>
+
+      <div className="shop-grid">
+        {visible.map(item => {
+          const canBuy = balance >= item.price && !item.owned;
+          return (
+            <div key={item.id} className="card shop-card">
+              <div className="shop-card-img">
+                <ItemImg src={item.img} size={64} radius={12} />
+              </div>
+              <div className="shop-card-cat">{item.category}</div>
+              <div className="shop-card-title">{item.title}</div>
+              <div className="shop-card-foot">
+                <Amount value={item.price} size="md" />
+                <button className={`btn ${item.owned?"btn-owned":"btn-primary"}`}
+                  type="button" disabled={item.owned || !canBuy} onClick={() => onBuy(item.id)}>
+                  {item.owned ? <><LI name="Check" size={14} /> Куплено</> : "Купить"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ---- ProfileView ---- */
+function ProfileView({ user, balance, earned, spent, leaderboard, myRank }) {
+  return (
+    <div className="view">
+      <header className="page-head">
+        <div className="profile-head">
+          <Avatar initials={user.initials} color={user.color} size={56} />
+          <div>
+            <div className="greeting">{user.name}</div>
+            <div className="page-sub">{user.direction} · {user.group}</div>
+          </div>
+        </div>
+      </header>
+
+      <section className="grid-3">
+        <div className="card stat-card"><div className="stat-label">Баланс</div><Amount value={balance} size="lg" /></div>
+        <div className="card stat-card"><div className="stat-label">Всего заработано</div><Amount value={earned} size="lg" /></div>
+        <div className="card stat-card"><div className="stat-label">Всего потрачено</div><Amount value={spent} size="lg" /></div>
+      </section>
+
+      <section className="card">
+        <div className="card-head"><div className="card-title">Достижения</div></div>
+        <div className="achv-grid">
+          {ACHIEVEMENTS.map(a => (
+            <div key={a.id} className={`achv-card ${a.earned?"":"achv-locked"}`}>
+              <div className="achv-icon"><LI name={a.icon} size={18} /></div>
+              <div className="achv-title">{a.title}</div>
+              <div className="achv-desc">{a.desc}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <div className="card-title">Рейтинг направления</div>
+          <div className="muted">В системе с {user.joined}</div>
+        </div>
+        <ul className="rank-list">
+          {leaderboard.map((p, idx) => (
+            <li key={p.id} className={`rank-row ${p.isMe?"me":""}`}>
+              <span className="rank-num">{idx+1}</span>
+              <Avatar initials={p.initials} color={AVATAR_COLORS[idx % AVATAR_COLORS.length]} size={30} />
+              <div>
+                <span className="rank-name">{p.isMe?"Вы":p.name}</span>
+                {!p.isMe && <div className="recipient-dir">{p.direction}</div>}
+              </div>
+              <Amount value={p.score} size="sm" />
+            </li>
+          ))}
+        </ul>
+        <div className="rank-foot">Ваше место в общем рейтинге: <b>#{myRank}</b> из {leaderboard.length}</div>
+      </section>
+    </div>
+  );
+}
+
+/* ---- CSS ---- */
+const CSS = `
+.qbank {
+  --bg:#F3F8F4; --surface:#FFFFFF; --surface-alt:#EAF4EE;
+  --green-900:#0F3D22; --green-700:#15703B; --green-600:#1E8849;
+  --green-500:#2BA85C; --mint-200:#D8F0DF; --cyan-500:#00C2CB;
+  --text-900:#16241B; --text-600:#51635A; --text-400:#8FA098;
+  --border:#DCEAE1; --red-600:#C7453C; --radius:14px;
+  font-family:'Inter',sans-serif; color:var(--text-900); background:var(--bg);
+  display:grid; grid-template-columns:240px 1fr; min-height:100vh; position:relative;
+}
+.qbank * { box-sizing:border-box; }
+.qbank button { font-family:inherit; cursor:pointer; }
+.qbank input  { font-family:inherit; }
+.qbank ul { list-style:none; margin:0; padding:0; }
+
+.sidebar { background:var(--green-900); color:#fff; display:flex; flex-direction:column;
+  padding:22px 18px; gap:28px; position:sticky; top:0; height:100vh; overflow-y:auto; }
+.brand { display:flex; align-items:center; gap:10px; }
+.brand-logo { width:36px; height:36px; border-radius:9px; object-fit:contain;
+  background:var(--green-600); padding:3px; flex-shrink:0; }
+.brand-name { font-family:'Manrope',sans-serif; font-weight:800; font-size:16px; letter-spacing:-0.02em; }
+.brand-sub  { font-size:11px; color:#9FCBAE; margin-top:1px; }
+.nav { display:flex; flex-direction:column; gap:4px; flex:1; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px;
+  border:none; background:transparent; color:#BFE0CB; font-size:14px; font-weight:600; text-align:left; }
+.nav-item:hover { background:rgba(255,255,255,0.06); color:#fff; }
+.nav-item.active { background:var(--green-600); color:#fff; }
+.sidebar-card { background:rgba(255,255,255,0.08); border-radius:var(--radius); padding:14px; }
+.sidebar-card-label { font-size:11px; color:#9FCBAE; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.04em; }
+
+.mobile-topbar { display:none; align-items:center; justify-content:space-between;
+  padding:14px 16px; background:var(--green-900); color:#fff; position:sticky; top:0; z-index:20; }
+.mobile-menu { display:none; }
+.icon-btn { background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:8px;
+  width:34px; height:34px; display:flex; align-items:center; justify-content:center; }
+.bottom-nav { display:none; }
+
+.main { padding:28px 32px 60px; max-width:980px; width:100%; }
+.view { display:flex; flex-direction:column; gap:20px; }
+.page-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.greeting { font-family:'Manrope',sans-serif; font-weight:800; font-size:24px; letter-spacing:-0.01em; }
+.page-sub { font-size:13px; color:var(--text-600); margin-top:2px; }
+.profile-head { display:flex; align-items:center; gap:14px; }
+
+.balance-card { background:linear-gradient(135deg,var(--green-700),var(--green-600));
+  color:#fff; border-radius:18px; padding:22px 24px; }
+.balance-card-label { display:flex; align-items:center; gap:8px; font-size:12px;
+  color:#C9EBD3; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; }
+.live-dot { width:7px; height:7px; border-radius:50%; background:var(--cyan-500); animation:pulse 2s infinite; display:inline-block; }
+@keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(0,194,203,0.55)} 70%{box-shadow:0 0 0 8px rgba(0,194,203,0)} 100%{box-shadow:0 0 0 0 rgba(0,194,203,0)} }
+.balance-card .amt-lg { color:#fff; font-size:34px; }
+.balance-actions { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+
+.amt { font-family:'JetBrains Mono',monospace; font-weight:700; display:inline-flex; align-items:center; color:var(--text-900); }
+.amt-sm { font-size:13px; } .amt-md { font-size:16px; } .amt-lg { font-size:28px; }
+.amt-pos { color:var(--green-600); } .amt-neg { color:var(--red-600); }
+
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; }
+.card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:10px; }
+.card-title { font-family:'Manrope',sans-serif; font-weight:700; font-size:15px; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.muted { color:var(--text-400); font-size:12px; }
+.link-btn { background:none; border:none; color:var(--green-600); font-size:12px; font-weight:600; display:flex; align-items:center; gap:2px; }
+
+.btn { display:inline-flex; align-items:center; gap:6px; border-radius:10px; padding:9px 14px; font-size:13px; font-weight:700; border:none; white-space:nowrap; }
+.btn:disabled { opacity:0.45; cursor:not-allowed; }
+.btn-primary { background:var(--green-600); color:#fff; }
+.btn-primary:hover:not(:disabled) { background:var(--green-700); }
+.btn-light { background:var(--surface-alt); color:var(--green-700); }
+.btn-light:hover:not(:disabled) { background:var(--mint-200); }
+.btn-owned { background:var(--mint-200); color:var(--green-700); }
+
+.tx-list { display:flex; flex-direction:column; gap:10px; }
+.tx-row { display:flex; align-items:center; gap:10px; }
+.tx-icon { width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.tx-in { background:var(--mint-200); color:var(--green-700); } .tx-out { background:#FBE6E4; color:var(--red-600); }
+.tx-info { flex:1; min-width:0; } .tx-title { font-size:13px; font-weight:600; } .tx-date { font-size:11px; color:var(--text-400); }
+.empty-row { color:var(--text-400); font-size:13px; padding:6px 0; }
+
+.goal-mini { display:flex; gap:12px; align-items:flex-start; }
+.goal-mini-icon { width:38px; height:38px; border-radius:10px; background:var(--surface-alt); color:var(--green-700);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; }
+.goal-mini-body { flex:1; } .goal-mini-title { font-size:13px; font-weight:600; margin-bottom:6px; }
+.goal-mini-nums { display:flex; align-items:center; gap:5px; margin-top:6px; }
+.progress { height:7px; border-radius:5px; background:var(--surface-alt); overflow:hidden; }
+.progress-fill { height:100%; background:linear-gradient(90deg,var(--green-500),var(--cyan-500)); border-radius:5px; }
+.goal-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+.goal-card-head { display:flex; gap:10px; align-items:flex-start; margin-bottom:10px; }
+.goal-card-icon { width:38px; height:38px; border-radius:10px; background:var(--surface-alt); color:var(--green-700);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; }
+.goal-card-title { font-weight:700; font-size:14px; }
+.goal-done-tag { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--green-600); font-weight:700; margin-top:2px; }
+.goal-actions { display:grid; grid-template-columns:1fr auto auto; gap:8px; margin-top:12px; }
+
+.rank-list { display:flex; flex-direction:column; gap:8px; }
+.rank-row { display:flex; align-items:center; gap:10px; padding:6px 0; }
+.rank-row.me { background:var(--surface-alt); border-radius:10px; padding:6px 8px; }
+.rank-num { width:18px; font-size:12px; color:var(--text-400); font-weight:700; }
+.rank-name { flex:1; font-size:13px; font-weight:600; }
+.rank-foot { font-size:12px; color:var(--text-600); margin-top:12px; }
+
+.search-box { display:flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:10px; padding:9px 12px; color:var(--text-400); }
+.search-input { border:none; outline:none; flex:1; font-size:14px; background:transparent; }
+.student-list { margin-top:8px; border:1px solid var(--border); border-radius:10px; overflow:hidden; max-height:220px; overflow-y:auto; }
+.student-row { display:flex; align-items:center; gap:10px; padding:10px 12px; cursor:pointer; }
+.student-row:hover { background:var(--surface-alt); }
+.recipient-pill { display:flex; align-items:center; gap:10px; border:1px solid var(--border); border-radius:10px; padding:8px 12px; }
+.recipient-name { font-size:13px; font-weight:700; } .recipient-dir { font-size:11px; color:var(--text-400); }
+.field-row { display:flex; gap:12px; margin-top:14px; flex-wrap:wrap; }
+.field { display:flex; flex-direction:column; gap:6px; flex:1; min-width:120px; }
+.field-label { font-size:11px; color:var(--text-600); font-weight:600; }
+.text-input { border:1px solid var(--border); border-radius:9px; padding:9px 11px; font-size:14px; outline:none; width:100%; }
+.text-input:focus { border-color:var(--green-500); }
+.balance-hint { font-size:12px; color:var(--text-600); margin:12px 0; display:flex; align-items:center; gap:4px; }
+
+.chip-row { display:flex; gap:8px; flex-wrap:wrap; }
+.chip { border:1px solid var(--border); background:var(--surface); border-radius:999px; padding:7px 14px; font-size:12px; font-weight:600; color:var(--text-600); }
+.chip.active { background:var(--green-600); color:#fff; border-color:var(--green-600); }
+.shop-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+.shop-card { display:flex; flex-direction:column; gap:8px; }
+.shop-card-img { display:flex; align-items:center; justify-content:center; background:var(--surface-alt); border-radius:12px; padding:10px; }
+.shop-card-cat { font-size:11px; color:var(--text-400); text-transform:uppercase; letter-spacing:0.04em; }
+.shop-card-title { font-size:14px; font-weight:700; min-height:38px; }
+.shop-card-foot { display:flex; align-items:center; justify-content:space-between; margin-top:auto; gap:8px; }
+.shop-mini-list { display:flex; flex-direction:column; gap:10px; }
+.shop-mini-row { display:flex; align-items:center; gap:10px; }
+.shop-mini-icon { width:30px; height:30px; border-radius:8px; background:var(--surface-alt); color:var(--green-700);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; }
+.shop-mini-title { flex:1; font-size:13px; font-weight:600; }
+
+.stat-card { display:flex; flex-direction:column; gap:8px; } .stat-label { font-size:12px; color:var(--text-600); font-weight:600; }
+.achv-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+.achv-card { border:1px solid var(--border); border-radius:12px; padding:14px; } .achv-locked { opacity:0.4; }
+.achv-icon { width:32px; height:32px; border-radius:9px; background:var(--surface-alt); color:var(--green-700);
+  display:flex; align-items:center; justify-content:center; margin-bottom:8px; }
+.achv-title { font-size:13px; font-weight:700; } .achv-desc { font-size:11px; color:var(--text-400); margin-top:2px; }
+
+.avatar { border-radius:50%; color:#fff; display:flex; align-items:center; justify-content:center;
+  font-weight:800; font-family:'Manrope',sans-serif; flex-shrink:0; }
+
+.toast { position:fixed; bottom:24px; right:24px; background:var(--green-900); color:#fff;
+  padding:12px 16px; border-radius:10px; display:flex; align-items:center; gap:8px;
+  font-size:13px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:50; }
+.toast-error { background:var(--red-600); }
+
+@media (max-width:880px) {
+  .qbank { grid-template-columns:1fr; }
+  .sidebar { display:none; }
+  .mobile-topbar { display:flex; }
+  .mobile-menu { display:flex; flex-direction:column; gap:4px; background:var(--green-900); padding:8px 14px 14px; position:sticky; top:56px; z-index:19; }
+  .mobile-menu .nav-item { color:#BFE0CB; }
+  .mobile-menu .nav-item.active { background:var(--green-600); color:#fff; }
+  .main { padding:20px 16px 90px; }
+  .grid-2,.grid-3 { grid-template-columns:1fr; }
+  .bottom-nav { display:flex; position:fixed; bottom:0; left:0; right:0; background:var(--surface);
+    border-top:1px solid var(--border); justify-content:space-around; padding:8px 4px; z-index:20; }
+  .bottom-nav-item { background:none; border:none; display:flex; flex-direction:column;
+    align-items:center; gap:2px; font-size:10px; color:var(--text-400); font-weight:600; padding:4px 6px; }
+  .bottom-nav-item.active { color:var(--green-600); }
+  .balance-actions { justify-content:stretch; }
+  .balance-actions .btn { flex:1; justify-content:center; }
+}
+`;
